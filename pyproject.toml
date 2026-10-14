@@ -30,6 +30,7 @@ dependencies = [
     "urllib3>=2.0",
     "pyarrow>=14.0",
     "pyyaml>=6.0",
+    "docker>=7.0",
 ]
 
 [project.optional-dependencies]
@@ -58,6 +59,12 @@ classificar = "inspectra.shortcuts.classificar:main"
 regen-dossies = "inspectra.shortcuts.regen_dossies:main"
 cron-monitor = "inspectra.shortcuts.cron_monitor:main"
 batch-classify = "inspectra.shortcuts.batch_classify:main"
+# New shortcuts
+inspectra-osint = "inspectra.shortcuts.osint:main"
+inspectra-dd = "inspectra.shortcuts.due_diligence:main"
+inspectra-relatorio = "inspectra.shortcuts.relatorio:main"
+inspectra-ollama = "inspectra.shortcuts.ollama:main"
+inspectra-openwebui = "inspectra.shortcuts.openwebui_install:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

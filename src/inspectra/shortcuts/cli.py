@@ -1,32 +1,39 @@
 """
-CLI unificada para tarefas comuns de auditoria.
+CLI unificada do Inspectra — plataforma de IA local para analise forense.
 
-Subcomandos:
-    investigar <nome/cnpj> [-m modelo]
-    analise    <nome_b> <orgao> <ano> [-m modelo]
-    ranking    [--top N] [--por valor|cnpj|cross]
-    sancoes    <cnpj>            (direto, rapido)
-    buscar     <termo> [--top K]  (direto, embeddings)
-    sql        "<pergunta>"      (gera SQL via LLM + executa)
-    dossie     <cnpj> [--save path]   (gera mini-dossie markdown)
-    cronograma <orgao|all>           (analise temporal mensal)
-    pessoas    --cpf X --nome Y      (cruza TSE + QSA)
-    shell      "<instrucao>"     (modo livre, abre o coding agent)
+Subcomandos (atalhos prontos para agentes LLMs chamarem):
+    investigar <nome/cnpj>       Investiga fornecedor cross-municipal
+    analise    <nome_b> <orgao> <ano>   Roda analise B-suite
+    ranking    [--top N] [--por valor|cnpj|cross]  Rankings
+    sancoes    <cnpj>            CEIS/CNEP/CEPIM direto
+    buscar     <termo>            Busca semantica em dossies
+    sql        "<pergunta>"       Natural language -> SQL
+    dossie     <cnpj>             Mini-dossie de CNPJ
+    cronograma <orgao|all>         Analise temporal mensal
+    pessoas    --cpf|--nome       TSE x QSA
+    shell      "<instrucao>"      Modo livre (coding agent)
+    ollama     chat|embed|models  Wrapper direto no Ollama
+    relatorio  <arquivo.json>     Gerador de relatorios
+    osint      dominio|cnpj|empresa|ip  OSINT completo
+    due_diligence <cnpj>          Due diligence de empresa
+    openwebui  install|check|restart|logs  Gerencia container Docker
 
 Uso:
-    python -m core.ia.atalhos investigar "COSTA OESTE"
-    python -m core.ia.atalhos analise benford camara_cuiaba 2025
-    python -m core.ia.atalhos ranking --top 10
-    python -m core.ia.atalhos sancoes 07.192.414/0001-09
-    python -m core.ia.atalhos buscar "fracionamento combustivel 2024"
-    python -m core.ia.atalhos dossie 07.192.414/0001-09
-    python -m core.ia.atalhos cronograma prefeitura_sinop
-    python -m core.ia.atalhos pessoas --cpf 12345678900
+    set INSPECTA_RAIZ=D:\\Dev\\EnemyDisclosure
+    python -m inspectra.shortcuts.cli investigar "COSTA OESTE"
+    python -m inspectra.shortcuts.cli ollama chat "Qual a situacao do Brasil?"
+    python -m inspectra.shortcuts.cli relatorio achados.json --saida relatorio.html
+    python -m inspectra.shortcuts.cli osint cnpj 07192414000109
+    python -m inspectra.shortcuts.cli due_diligence cnpj 07192414000109
 """
+from __future__ import annotations
 import argparse
+import os
 import sys
 from datetime import datetime
 from pathlib import Path
+
+RAIZ = Path(os.environ.get("INSPECTA_RAIZ", Path(__file__).resolve().parents[3]))
 
 from .investigar import cmd_investigar
 from .analise import cmd_analise
@@ -38,102 +45,168 @@ from .shell import cmd_shell
 from .dossie import cmd_dossie
 from .cronograma import cmd_cronograma
 from .pessoas import cmd_pessoas
-import os
-
-RAIZ = Path(os.environ.get("INSPECTA_RAIZ", Path(__file__).resolve().parents[3]))
+from .ollama import cmd_chat, cmd_embed, cmd_models, cmd_complete
+from . import relatorio, osint, due_diligence, openwebui_install
 
 
 def main():
     p = argparse.ArgumentParser(
-        prog="atalhos",
-        description="Atalhos de auditoria do EnemyDisclosure (via Ollama local).",
+        prog="inspectra",
+        description="Plataforma Inspectra — IA local para analise forense.",
     )
     p.add_argument("--model", default="gemma4:latest",
-                    help="Modelo Ollama a usar (default: gemma4:latest)")
+                   help="Modelo Ollama padrao (default: gemma4:latest)")
     sub = p.add_subparsers(dest="cmd", required=True)
 
     # investigar
-    sp = sub.add_parser("investigar", help="Investiga fornecedor (nome parcial ou CNPJ) em todos os municipios")
-    sp.add_argument("termo", help="Nome parcial ou CNPJ (com ou sem formatacao)")
+    sp = sub.add_parser("investigar", help="Investiga fornecedor em todos os municipios")
+    sp.add_argument("termo", help="Nome parcial ou CNPJ")
     sp.add_argument("--steps", type=int, default=8)
 
     # analise
-    sp = sub.add_parser("analise", help="Roda uma analise do B-suite e le o resultado")
-    sp.add_argument("nome", help="Nome snake_case (fracionamento, benford, nepotismo, aditivos, ...)")
-    sp.add_argument("orgao", help="Slug do orgao (prefeitura_cuiaba, camara_vg, ...)")
+    sp = sub.add_parser("analise", help="Roda uma analise do B-suite")
+    sp.add_argument("nome", help="Nome snake_case (fracionamento, benford, ...)")
+    sp.add_argument("orgao", help="Slug do orgao")
     sp.add_argument("ano", type=int, help="Exercicio")
     sp.add_argument("--steps", type=int, default=8)
 
     # ranking
-    sp = sub.add_parser("ranking", help="Ranking cross-municipal por valor ou por CNPJ raiz")
-    sp.add_argument("--top", type=int, default=10, help="Quantos (default 10)")
-    sp.add_argument("--por", choices=["valor", "cnpj", "cross"], default="valor",
-                    help="valor = top por valor total; cnpj = top credores distintos; cross = 2+ municipios")
-    sp.add_argument("--steps", type=int, default=5)
+    sp = sub.add_parser("ranking", help="Ranking cross-municipal")
+    sp.add_argument("--top", type=int, default=10)
+    sp.add_argument("--por", choices=["valor", "cnpj", "cross"], default="valor")
 
     # sancoes
-    sp = sub.add_parser("sancoes", help="Consulta direta (sem LLM) nas sancoes federais (CEIS/CNEP/CEPIM)")
-    sp.add_argument("cnpj", help="CNPJ raiz (8 digitos) ou CNPJ completo (com pontuacao)")
+    sp = sub.add_parser("sancoes", help="Consulta direta CEIS/CNEP/CEPIM")
+    sp.add_argument("cnpj", help="CNPJ (8 ou 14 digitos)")
 
-    # buscar (semantica)
-    sp = sub.add_parser("buscar", help="Busca semantica em todos os dossies (sem LLM)")
-    sp.add_argument("termo", help="Termo de busca em PT-BR")
+    # buscar
+    sp = sub.add_parser("buscar", help="Busca semantica em dossies")
+    sp.add_argument("termo", help="Termo em PT-BR")
     sp.add_argument("--top", type=int, default=5)
 
-    # sql (gera SQL via LLM e executa)
-    sp = sub.add_parser("sql", help="Pergunta em linguagem natural -> SQL -> executa no macro_mt.db")
+    # sql
+    sp = sub.add_parser("sql", help="Pergunta em portugues -> SQL")
     sp.add_argument("pergunta", help="Pergunta em portugues")
-    sp.add_argument("--banco", default="shared_data/macro_mt/macro_mt.db")
     sp.add_argument("--steps", type=int, default=4)
 
     # dossie
-    sp = sub.add_parser("dossie", help="Gera mini-dossie markdown de um CNPJ")
-    sp.add_argument("cnpj", help="CNPJ (com ou sem pontuacao)")
-    sp.add_argument("--save", nargs="?", const=True, default=False,
-                    help="Salva em arquivo (default NAO salva, a menos que voce passe --save ou um path)")
-    sp.add_argument("--no-save", dest="save", action="store_false",
-                    help="Nao salva em arquivo (padrao)")
+    sp = sub.add_parser("dossie", help="Mini-dossie de um CNPJ")
+    sp.add_argument("cnpj", help="CNPJ")
+    sp.add_argument("--save", nargs="?", const=True, default=False)
 
     # cronograma
-    sp = sub.add_parser("cronograma", help="Analise temporal (mes a mes) de um orgao ou todos")
-    sp.add_argument("orgao", nargs="?", default="todos", help="Slug do orgao ou 'todos' (default)")
+    sp = sub.add_parser("cronograma", help="Analise temporal mensal")
+    sp.add_argument("orgao", nargs="?", default="todos")
     sp.add_argument("--steps", type=int, default=6)
 
     # pessoas
-    sp = sub.add_parser("pessoas", help="Investiga politico/socio cruzando TSE + QSA (sem LLM)")
+    sp = sub.add_parser("pessoas", help="Cruza TSE + QSA")
     g = sp.add_mutually_exclusive_group(required=True)
-    g.add_argument("--cpf", help="CPF (11 digitos)")
-    g.add_argument("--nome", help="Nome parcial para buscar")
+    g.add_argument("--cpf", help="CPF")
+    g.add_argument("--nome", help="Nome parcial")
 
-    # shell (modo livre)
-    sp = sub.add_parser("shell", help="Modo livre - passa a instrucao direto ao coding agent")
+    # shell
+    sp = sub.add_parser("shell", help="Modo livre com coding agent")
     sp.add_argument("instrucao", nargs="+")
     sp.add_argument("--steps", type=int, default=12)
 
-    args = p.parse_args()
+    # ollama
+    sp = sub.add_parser("ollama", help="Wrapper direto no Ollama (chat/embed/models)")
+    ollama_sub = sp.add_subparsers(dest="ollama_cmd", required=True)
+    o = ollama_sub.add_parser("chat", help="Conversa")
+    o.add_argument("mensagem")
+    o.add_argument("--model", default="gemma4:latest")
+    o.add_argument("--system")
+    o.add_argument("--temperatura", type=float, default=0.3)
+    o.add_argument("--json", action="store_true")
+    o = ollama_sub.add_parser("embed", help="Embedding")
+    o.add_argument("texto")
+    o.add_argument("--embed-model")
+    o.add_argument("--raw", action="store_true")
+    ollama_sub.add_parser("models", help="Lista modelos")
+    o = ollama_sub.add_parser("complete", help="Completion unico")
+    o.add_argument("prompt")
+    o.add_argument("--model", default="gemma4:latest")
+    o.add_argument("--temperatura", type=float, default=0.3)
+    o.add_argument("--json", action="store_true")
 
+    # relatorio
+    sp = sub.add_parser("relatorio", help="Gerador de relatorios")
+    sp.add_argument("arquivo", nargs="?", help="JSON de entrada (stdin se omitido)")
+    sp.add_argument("--formato", choices=["md", "html"], default="md")
+    sp.add_argument("--saida", help="Arquivo de saida")
+    sp.add_argument("--demo", action="store_true")
+
+    # osint
+    sp = sub.add_parser("osint", help="OSINT: dominio|cnpj|empresa|ip")
+    sp.add_argument("tipo", choices=["dominio", "cnpj", "empresa", "ip"])
+    sp.add_argument("valor", nargs="?", help="Alvo")
+    sp.add_argument("--json", action="store_true")
+
+    # due_diligence
+    sp = sub.add_parser("due_diligence", help="Due diligence de CNPJ")
+    sp.add_argument("cnpj", nargs="?", help="CNPJ")
+    sp.add_argument("--model", default="gemma4:latest")
+    sp.add_argument("--json", action="store_true")
+    sp.add_argument("--demo", action="store_true")
+
+    # openwebui
+    sp = sub.add_parser("openwebui", help="Gerencia Open WebUI Docker")
+    ow_sub = sp.add_subparsers(dest="ow_cmd", required=True)
+    ow_sub.add_parser("install", help="Instala custom tools")
+    ow_sub.add_parser("check", help="Status do container")
+    ow_sub.add_parser("restart", help="Reinicia container")
+    ow_logs = ow_sub.add_parser("logs", help="Logs do container")
+    ow_logs.add_argument("--lines", type=int, default=50)
+
+    args = p.parse_args()
     cmd = args.cmd
+
     if cmd == "investigar":
-        sys.exit(cmd_investigar(args))
+        return cmd_investigar(args)
     elif cmd == "analise":
-        sys.exit(cmd_analise(args))
+        return cmd_analise(args)
     elif cmd == "ranking":
-        sys.exit(cmd_ranking(args))
+        return cmd_ranking(args)
     elif cmd == "sancoes":
-        sys.exit(cmd_sancoes(args))
+        return cmd_sancoes(args)
     elif cmd == "buscar":
-        sys.exit(cmd_buscar(args))
+        return cmd_buscar(args)
     elif cmd == "sql":
-        sys.exit(cmd_sql(args))
+        return cmd_sql(args)
     elif cmd == "dossie":
-        sys.exit(cmd_dossie(args))
+        return cmd_dossie(args)
     elif cmd == "cronograma":
-        sys.exit(cmd_cronograma(args))
+        return cmd_cronograma(args)
     elif cmd == "pessoas":
-        sys.exit(cmd_pessoas(args))
+        return cmd_pessoas(args)
     elif cmd == "shell":
-        sys.exit(cmd_shell(args))
+        return cmd_shell(args)
+    elif cmd == "ollama":
+        if args.ollama_cmd == "chat":
+            from .ollama import cmd_chat as f; return f(args)
+        elif args.ollama_cmd == "embed":
+            from .ollama import cmd_embed as f; return f(args)
+        elif args.ollama_cmd == "models":
+            from .ollama import cmd_models as f; return f(args)
+        elif args.ollama_cmd == "complete":
+            from .ollama import cmd_complete as f; return f(args)
+    elif cmd == "relatorio":
+        return relatorio.main()
+    elif cmd == "osint":
+        return osint.main()
+    elif cmd == "due_diligence":
+        return due_diligence.main()
+    elif cmd == "openwebui":
+        if args.ow_cmd == "install":
+            return openwebui_install.cmd_install(args)
+        elif args.ow_cmd == "check":
+            return openwebui_install.cmd_check(args)
+        elif args.ow_cmd == "restart":
+            return openwebui_install.cmd_restart(args)
+        elif args.ow_cmd == "logs":
+            return openwebui_install.cmd_logs(args)
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())
