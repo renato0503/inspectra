@@ -1,0 +1,8 @@
+requests>=2.31
+urllib3>=2.0
+pyarrow>=14.0
+pyyaml>=6.0
+# Opcionais
+# playwright>=1.40  (ingestao)
+# curl-cffi>=0.6   (busca bypass anti-bot)
+# Ollama roda separadamente (download 1.5 GB+)

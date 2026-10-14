@@ -1,0 +1,28 @@
+{
+  "site": "https://www.gp.srv.br/transparencia_sinop",
+  "slug": "prefeitura_sinop",
+  "app_type": "spa",
+  "runtime_mode": "static",
+  "vendor": "genexus_gp",
+  "vendor_nome": "GeneXus legado GP (gp.srv.br)",
+  "adapter": "genexus_gp",
+  "confianca": "alta",
+  "apis_static": [
+    "/servlet/wmdespesacredor",
+    "/servlet/wmempenho",
+    "/servlet/wmcontrato",
+    "/servlet/wmlicitacao"
+  ],
+  "apis_runtime": [],
+  "frontend_routes": [
+    "/transparencia_sinop"
+  ],
+  "params": [],
+  "js_downloaded": 48,
+  "evidencias": [
+    "js:gxValues",
+    "js:GX_AJAX_KEY",
+    "html:gp\\.srv\\.br"
+  ],
+  "limitacoes": ""
+}

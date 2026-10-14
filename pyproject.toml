@@ -1,0 +1,66 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "inspectra"
+version = "0.1.0"
+description = "Analise forense e inteligencia industrial com IAs locais (Ollama + REA/ARTEX)."
+readme = "README.md"
+requires-python = ">=3.10"
+license = {file = "LICENSE"}
+keywords = ["ollama", "llm", "audit", "forensics", "osint", "rea", "artex", "open-source"]
+authors = [{name = "Renato Rosa", email = "gestor.renatorosa@gmail.com"}]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Office/Business :: Financial",
+    "Topic :: Scientific/Engineering :: Information Analysis",
+    "Topic :: Security",
+]
+
+dependencies = [
+    "requests>=2.31",
+    "urllib3>=2.0",
+    "pyarrow>=14.0",
+    "pyyaml>=6.0",
+]
+
+[project.optional-dependencies]
+llm = [
+    # Ollama rodando localmente (instrucoes em INSTALL.md).
+]
+ingestao = [
+    # REA via npm install -g rea-agents (instrucoes em INSTALL.md).
+    "playwright>=1.40",
+]
+busca = [
+    "curl-cffi>=0.6",
+]
+tudo = [
+    "playwright>=1.40",
+    "curl-cffi>=0.6",
+]
+
+[project.urls]
+"Homepage" = "https://github.com/renato0503/inspectra"
+"Article" = "https://medium.com/@renato0503/inspectra-analise-forense-com-ia-local"
+
+[project.scripts]
+inspectra = "inspectra.shortcuts.cli:main"
+classificar = "inspectra.shortcuts.classificar:main"
+regen-dossies = "inspectra.shortcuts.regen_dossies:main"
+cron-monitor = "inspectra.shortcuts.cron_monitor:main"
+batch-classify = "inspectra.shortcuts.batch_classify:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+inspectra = ["**/*.md", "**/*.json", "**/*.yml"]
