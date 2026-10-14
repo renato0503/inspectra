@@ -38,8 +38,9 @@ from .shell import cmd_shell
 from .dossie import cmd_dossie
 from .cronograma import cmd_cronograma
 from .pessoas import cmd_pessoas
+import os
 
-RAIZ = Path(__file__).resolve().parents[3]
+RAIZ = Path(os.environ.get("INSPECTA_RAIZ", Path(__file__).resolve().parents[3]))
 
 
 def main():

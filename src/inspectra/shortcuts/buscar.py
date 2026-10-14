@@ -1,11 +1,12 @@
 """Busca semantica (sem LLM) em todos os dossies/analises via embeddings."""
 import math
+import os
 from pathlib import Path
 from typing import List, Dict
 
 from inspectra.llm.client import embed
 
-RAIZ = Path(__file__).resolve().parents[3]
+RAIZ = Path(os.environ.get("INSPECTA_RAIZ", Path(__file__).resolve().parents[3]))
 
 
 def _cos(a: List[float], b: List[float]) -> float:

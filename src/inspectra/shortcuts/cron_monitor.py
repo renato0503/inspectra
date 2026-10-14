@@ -21,6 +21,7 @@ Saidas em `shared_data/cron_alerts/`:
 """
 from __future__ import annotations
 import json
+import os
 import sqlite3
 import statistics
 import sys
@@ -29,7 +30,7 @@ from pathlib import Path
 
 from inspectra.llm.client import chat
 
-RAIZ = Path(__file__).resolve().parents[2]
+RAIZ = Path(os.environ.get("INSPECTA_RAIZ", Path(__file__).resolve().parents[3]))
 MACRO_DB = RAIZ / "shared_data" / "macro_mt" / "macro_mt.db"
 ALERTAS_DIR = RAIZ / "shared_data" / "cron_alerts"
 ALERTAS_DIR.mkdir(parents=True, exist_ok=True)

@@ -1,10 +1,11 @@
 """Consulta direta (sem LLM) nas sancoes federais (CEIS/CNEP/CEPIM/Leniencia)."""
 import json
+import os
 import re
 import sqlite3
 from pathlib import Path
 
-RAIZ = Path(__file__).resolve().parents[3]
+RAIZ = Path(os.environ.get("INSPECTA_RAIZ", Path(__file__).resolve().parents[3]))
 SHARED = RAIZ / "shared_data"
 
 

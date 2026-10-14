@@ -11,12 +11,13 @@ Uso:
 from __future__ import annotations
 import argparse
 import json
+import os
 import sys
 from pathlib import Path
 
 from inspectra.shortcuts.classificar import classificar_orgaos
 
-RAIZ = Path(__file__).resolve().parents[2]
+RAIZ = Path(os.environ.get("INSPECTA_RAIZ", Path(__file__).resolve().parents[3]))
 
 
 def listar_orgaos(ano: int) -> list:

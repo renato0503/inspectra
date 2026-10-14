@@ -14,6 +14,7 @@ Uso:
 from __future__ import annotations
 import argparse
 import json
+import os
 import sqlite3
 import sys
 from datetime import datetime
@@ -27,7 +28,7 @@ from inspectra.shortcuts.dossie import (
     _top_objetos,
 )
 
-RAIZ = Path(__file__).resolve().parents[2]
+RAIZ = Path(os.environ.get("INSPECTA_RAIZ", Path(__file__).resolve().parents[3]))
 MACRO_DB = RAIZ / "shared_data" / "macro_mt" / "macro_mt.db"
 DEST = RAIZ / "shared_data" / "dossies_fornecedores"
 

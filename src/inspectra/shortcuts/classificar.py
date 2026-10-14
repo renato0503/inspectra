@@ -13,13 +13,14 @@ Uso:
 """
 from __future__ import annotations
 import json
+import os
 import re
 from pathlib import Path
 from typing import Dict, List, Optional
 
 from inspectra.llm.client import chat
 
-RAIZ = Path(__file__).resolve().parents[2]
+RAIZ = Path(os.environ.get("INSPECTA_RAIZ", Path(__file__).resolve().parents[3]))
 
 
 SYSTEM_PROMPT = """\

@@ -10,13 +10,14 @@ Para um CPF ou nome fornecido:
 3. Cruza: socio X = doador de Y = candidato a Z
 """
 import json
+import os
 import re
 from pathlib import Path
 from typing import Dict, List, Optional
 
 from inspectra.llm.client import embed
 
-RAIZ = Path(__file__).resolve().parents[3]
+RAIZ = Path(os.environ.get("INSPECTA_RAIZ", Path(__file__).resolve().parents[3]))
 SHARED = RAIZ / "shared_data"
 
 

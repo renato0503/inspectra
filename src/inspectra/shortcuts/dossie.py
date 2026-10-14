@@ -14,8 +14,9 @@ from datetime import datetime
 from pathlib import Path
 
 from inspectra.shortcuts.sancoes import _buscar_em_csv, _norm
+import os
 
-RAIZ = Path(__file__).resolve().parents[3]
+RAIZ = Path(os.environ.get("INSPECTA_RAIZ", Path(__file__).resolve().parents[3]))
 SHARED = RAIZ / "shared_data"
 
 
