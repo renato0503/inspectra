@@ -59,12 +59,19 @@ classificar = "inspectra.shortcuts.classificar:main"
 regen-dossies = "inspectra.shortcuts.regen_dossies:main"
 cron-monitor = "inspectra.shortcuts.cron_monitor:main"
 batch-classify = "inspectra.shortcuts.batch_classify:main"
-# New shortcuts
+# 7 novos atalhos
 inspectra-osint = "inspectra.shortcuts.osint:main"
 inspectra-dd = "inspectra.shortcuts.due_diligence:main"
 inspectra-relatorio = "inspectra.shortcuts.relatorio:main"
 inspectra-ollama = "inspectra.shortcuts.ollama:main"
 inspectra-openwebui = "inspectra.shortcuts.openwebui_install:main"
+inspectra-pep = "inspectra.shortcuts.pep_check:main"
+inspectra-socios = "inspectra.shortcuts.socios:main"
+inspectra-geo = "inspectra.shortcuts.geocode_lote:main"
+inspectra-meta = "inspectra.shortcuts.metadados:main"
+inspectra-diario = "inspectra.shortcuts.diario:main"
+inspectra-sqlx = "inspectra.shortcuts.sql_qualquer:main"
+inspectra-csvdiff = "inspectra.shortcuts.csv_diff:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

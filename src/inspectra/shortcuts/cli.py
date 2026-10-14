@@ -150,6 +150,50 @@ def main():
     sp.add_argument("--json", action="store_true")
     sp.add_argument("--demo", action="store_true")
 
+    # pep_check
+    sp = sub.add_parser("pep_check", help="Verifica se pessoa e PEP (politicamente exposta)")
+    g = sp.add_mutually_exclusive_group()
+    g.add_argument("nome", nargs="?", help="Nome da pessoa")
+    g.add_argument("--cpf", help="CPF (11 digitos)")
+
+    # socios
+    sp = sub.add_parser("socios", help="Lista socios de um CNPJ com qualificacao e data")
+    sp.add_argument("cnpj", nargs="?", help="CNPJ")
+    sp.add_argument("--cnpj", dest="cnpj_opt", help="CNPJ via flag")
+
+    # geocode_lote
+    sp = sub.add_parser("geocode_lote", help="Geocodifica lote de CNPJs em paralelo (Nominatim)")
+    sp.add_argument("arquivo", nargs="?", help="CSV com CNPJs")
+    sp.add_argument("--lista", nargs="*", help="CNPJs diretamente")
+    sp.add_argument("--max-workers", type=int, default=4)
+
+    # metadados
+    sp = sub.add_parser("metadados", help="Extrai metadados EXIF de imagens (GPS, camera, PII)")
+    sp.add_argument("arquivo", nargs="?", help="Arquivo de imagem")
+    sp.add_argument("--diretorio", help="Processar todos os arquivos de um diretorio")
+    sp.add_argument("--extensao", default=".jpg")
+
+    # diario
+    sp = sub.add_parser("diario", help="Busca em diarios oficiais (MT, SC, federal)")
+    sp.add_argument("termo", nargs="?", help="Termo de busca")
+    sp.add_argument("--uf", default=None)
+    sp.add_argument("--periodo", type=int, default=365)
+
+    # sql_qualquer
+    sp = sub.add_parser("sql_qualquer", help="Executa SQL em qualquer banco SQLite (apenas SELECT)")
+    sp.add_argument("db", help="Caminho do banco SQLite")
+    sp.add_argument("query", nargs="?", help="Query SQL")
+    sp.add_argument("--schema", action="store_true")
+    sp.add_argument("--tabela", dest="tabela")
+    sp.add_argument("--limite", type=int, default=1000)
+
+    # csv_diff
+    sp = sub.add_parser("csv_diff", help="Diff entre dois CSVs (adicionados, removidos, alterados)")
+    sp.add_argument("arquivo_a", help="Primeiro CSV (antes)")
+    sp.add_argument("arquivo_b", help="Segundo CSV (depois)")
+    sp.add_argument("--chave", default="cnpj")
+    sp.add_argument("--saida", help="Salvar resultado em JSON")
+
     # openwebui
     sp = sub.add_parser("openwebui", help="Gerencia Open WebUI Docker")
     ow_sub = sp.add_subparsers(dest="ow_cmd", required=True)
@@ -197,6 +241,30 @@ def main():
         return osint.main()
     elif cmd == "due_diligence":
         return due_diligence.main()
+
+    # ---- novos atalhos (alta prioridade) ----
+    elif cmd == "pep_check":
+        from .pep_check import main as pep_main
+        return pep_main()
+    elif cmd == "socios":
+        from .socios import main as socios_main
+        return socios_main()
+    elif cmd == "geocode_lote":
+        from .geocode_lote import main as geo_main
+        return geo_main()
+    elif cmd == "metadados":
+        from .metadados import main as meta_main
+        return meta_main()
+    elif cmd == "diario":
+        from .diario import main as diario_main
+        return diario_main()
+    elif cmd == "sql_qualquer":
+        from .sql_qualquer import main as sqlx_main
+        return sqlx_main()
+    elif cmd == "csv_diff":
+        from .csv_diff import main as diff_main
+        return diff_main()
+
     elif cmd == "openwebui":
         if args.ow_cmd == "install":
             return openwebui_install.cmd_install(args)

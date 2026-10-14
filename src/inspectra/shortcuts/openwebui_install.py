@@ -19,7 +19,11 @@ import sys
 import os
 from pathlib import Path
 
-import docker
+try:
+    import docker
+    HAS_DOCKER = True
+except ImportError:
+    HAS_DOCKER = False
 
 CONTAINER_NAME = "open-webui"
 TOOLS_SOURCE = Path(__file__).resolve().parents[2] / "tools"
@@ -28,6 +32,10 @@ TOOLS_DEST_INSIDE_CONTAINER = "/app/backend/open_webui/tools/custom"
 
 def _get_container():
     """Retorna o cliente Docker e o container do Open WebUI."""
+    if not HAS_DOCKER:
+        raise RuntimeError(
+            "Biblioteca 'docker' nao instalada. Instale com: pip install docker"
+        )
     try:
         client = docker.from_env()
     except Exception as e:
@@ -50,7 +58,7 @@ def cmd_check(args) -> int:
         print(f"Status: {container.status}")
         print(f"Image: {container.image.tags}")
         # Verifica volume mount
-        mounts = {m["Destination"]: m["Source"] for m in container mounts}
+        mounts = {m["Destination"]: m["Source"] for m in container.attrs.get("Mounts", [])}
         print(f"\nMounts relevantes:")
         for dest, src in mounts.items():
             if "open_webui" in dest or "custom" in dest:

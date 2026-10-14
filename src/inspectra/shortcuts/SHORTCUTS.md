@@ -1,7 +1,8 @@
 # Inspectra — Catálogo de Atalhos
 
-> **15 shortcuts** para agentes LLM chamarem diretamente via CLI ou API Python.
+> **22 shortcuts** para agentes LLM chamarem diretamente via CLI ou API Python.
 > Todos aceitam `INSPECTA_RAIZ` para apontar pro diretório de dados.
+> Saída padronizada em JSON estruturado: `{ok, dados, fonte, erro, timestamp, prompt_hint}`.
 
 ---
 
@@ -277,7 +278,120 @@ python -m inspectra.shortcuts.cli shell "Compare os gastos de Cuiaba e VG em 202
 
 ---
 
-### 15. `openwebui` — Gerencia Open WebUI Docker
+### 15. `pep_check` — Verifica PEP (Pessoa Politicamente Exposta)
+
+**Verifica se pessoa e PEP via TSE (candidatos/eleitos) + Portal da Transparencia. Retorna JSON estruturado.**
+
+```bash
+# Por nome
+python -m inspectra.shortcuts.cli pep_check "JAIR BOLSONARO"
+
+# Por CPF
+python -m inspectra.shortcuts.cli pep_check --cpf 01234567890
+```
+
+**Saída JSON:** `{pep: bool, matches: [{nome, cargo, orgao, partido, uf, situacao}], total_matches}`
+
+---
+
+### 16. `socios` — Lista Sócios de CNPJ
+
+**Lista quadro societário com qualificacao e data de entrada. Cache BrasilAPI.**
+
+```bash
+python -m inspectra.shortcuts.cli socios 07192414000109
+python -m inspectra.shortcuts.cli socios --cnpj 07192414000109
+```
+
+**Saída JSON:** `{cnpj, razao_social, socios: [{nome, cpf_parcial, qualificacao, data_entrada}], total_socios}`
+
+---
+
+### 17. `geocode_lote` — Geocodifica Lote de CNPJs em Paralelo
+
+**Geocodifica enderecos de CNPJs via Nominatim/OSM em paralelo (ThreadPoolExecutor). Cache local.**
+
+```bash
+# De CSV com coluna CNPJ
+python -m inspectra.shortcuts.cli geocode_lote fornecedores.csv
+
+# Lista direta
+python -m inspectra.shortcuts.cli geocode_lote --lista 07192414000109 12345678000199
+
+# Paralelo (8 workers)
+python -m inspectra.shortcuts.cli geocode_lote fornecedores.csv --max-workers 8
+```
+
+**Saída JSON:** `{total, sucessos, falhas, resultados: [{cnpj, lat, lon, tipo_zona, geocodificado}]}`
+
+---
+
+### 18. `metadados` — Extrai EXIF de Imagens
+
+**Extrai metadados EXIF (GPS, camera, software, data). Detecta PII (GPS, CPF em metadata).**
+
+```bash
+# Uma imagem
+python -m inspectra.shortcuts.cli metadados foto.jpg
+
+# Todas as imagens de um diretorio
+python -m inspectra.shortcuts.cli metadados --diretorio ./fotos --extensao .jpg
+```
+
+**Saída JSON:** `{arquivo, tamanho, formato, tem_exif, exif, gps, gps_str, tem_pii, pii_flags}`
+
+---
+
+### 19. `diario` — Busca em Diários Oficiais
+
+**Busca em diários oficiais (AMM-MT, TCE-SC, Querido Diario federal) + macro_mt.db.**
+
+```bash
+# Busca geral
+python -m inspectra.shortcuts.cli diario "LICITACAO" --uf MT
+
+# Periodo personalizado
+python -m inspectra.shortcuts.cli diario "CONTRATO" --periodo 180
+```
+
+**Saída JSON:** `{termo, uf, matches: [{data, diario, trecho, link}], total, fontes}`
+
+---
+
+### 20. `sql_qualquer` — SQL em Qualquer SQLite
+
+**Executa SQL SELECT em qualquer banco SQLite (nao so macro_mt). Schema discovery automatico.**
+
+```bash
+# Query
+python -m inspectra.shortcuts.cli sql_qualquer shared_data/macro_mt/macro_mt.db \
+  "SELECT municipio, SUM(valor) FROM despesas GROUP BY municipio LIMIT 10"
+
+# Ver schema
+python -m inspectra.shortcuts.cli sql_qualquer shared_data/macro_mt/macro_mt.db --schema
+
+# Tabela especifica
+python -m inspectra.shortcuts.cli sql_qualquer shared_data/macro_mt/macro_mt.db --tabela despesas
+```
+
+**Seguranca:** apenas SELECT; DML/DDL bloqueados.
+
+---
+
+### 21. `csv_diff` — Diff Entre Dois CSVs
+
+**Compara dois CSVs: linhas adicionadas, removidas, alteradas. Detecta mudanca de schema.**
+
+```bash
+python -m inspectra.shortcuts.cli csv_diff compras_jan.csv compras_fev.csv --chave cnpj
+python -m inspectra.shortcuts.cli csv_diff a.csv b.csv --chave id --saida diff.json
+```
+
+**Saída JSON:** `{arquivo_a, arquivo_b, totais: {adicionados, removidos, alterados}, adicionados, removidos, alterados, schema_diff}`
+
+---
+
+### 22. `openwebui` — Gerencia Open WebUI Docker
 
 ```bash
 # Verificar status
@@ -326,6 +440,13 @@ from inspectra.shortcuts.osint import investigar_cnpj, investigar_dominio
 from inspectra.shortcuts.due_diligence import investigar
 from inspectra.shortcuts.relatorio import de_json, de_html
 from inspectra.shortcuts.sancoes import _buscar_em_csv
+from inspectra.shortcuts.pep_check import check_pep
+from inspectra.shortcuts.socios import listar_socios
+from inspectra.shortcuts.geocode_lote import geocode_lote
+from inspectra.shortcuts.metadados import extrair_metadados
+from inspectra.shortcuts.diario import buscar_diario
+from inspectra.shortcuts.sql_qualquer import executar_sql
+from inspectra.shortcuts.csv_diff import csv_diff
 
 # Vertical EnemyDisclosure
 from inspectra.verticals.enemy import EnemyDisclosure
@@ -381,4 +502,11 @@ ed.listar_sancoes("07192414000109")
 | `cronograma` | ✅ OK | Análise mensal + picos |
 | `pessoas` | ✅ OK | TSE parquet + QSA |
 | `shell` | ✅ OK | CodingAgent livre |
+| `pep_check` | ✅ OK | TSE + PortalTransparencia (JSON estruturado) |
+| `socios` | ✅ OK | QSA BrasilAPI + mascara CPF (JSON estruturado) |
+| `geocode_lote` | ✅ OK | Nominatim paralelo + cache (JSON estruturado) |
+| `metadados` | ✅ OK | EXIF/Pillow com deteccao PII (JSON estruturado) |
+| `diario` | ✅ OK | AMM-MT + TCE-SC + Querido Diario (JSON estruturado) |
+| `sql_qualquer` | ✅ OK | SELECT em qualquer SQLite, schema discovery (JSON) |
+| `csv_diff` | ✅ OK | Diff CSVs com schema (JSON estruturado) |
 | `openwebui` | ⚠️ Precisa Docker | `docker` lib instalada |
