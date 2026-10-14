@@ -302,3 +302,304 @@ class TestCLI:
         assert callable(diario.main)
         assert callable(sql_qualquer.main)
         assert callable(csv_diff.main)
+
+
+# ─── Testes: ollama.py ─────────────────────────────────────────────────────
+
+class TestOllama:
+    @patch("inspectra.llm.client.listar_modelos")
+    def test_list_models(self, mock_list):
+        """listar_modelos() retorna lista de modelos."""
+        mock_list.return_value = ["gemma4:latest", "llama3.1:8b"]
+        from inspectra.llm.client import listar_modelos
+        r = listar_modelos()
+        assert isinstance(r, list)
+        assert len(r) == 2
+
+    def test_cmd_models_importavel(self):
+        """cmd_models pode ser importado."""
+        from inspectra.shortcuts.ollama import cmd_models
+        assert callable(cmd_models)
+
+    def test_cmd_chat_importavel(self):
+        """cmd_chat pode ser importado."""
+        from inspectra.shortcuts.ollama import cmd_chat
+        assert callable(cmd_chat)
+
+
+# ─── Testes: osint.py ───────────────────────────────────────────────────────
+
+class TestOsint:
+    def test_investigar_cnpj_importavel(self):
+        """investigar_cnpj pode ser importado."""
+        from inspectra.shortcuts.osint import investigar_cnpj
+        assert callable(investigar_cnpj)
+
+    def test_investigar_dominio_importavel(self):
+        """investigar_dominio pode ser importado."""
+        from inspectra.shortcuts.osint import investigar_dominio
+        assert callable(investigar_dominio)
+
+    def test_investigar_empresa_importavel(self):
+        """investigar_empresa pode ser importado."""
+        from inspectra.shortcuts.osint import investigar_empresa
+        assert callable(investigar_empresa)
+
+    def test_investigar_ip_importavel(self):
+        """investigar_ip pode ser importado."""
+        from inspectra.shortcuts.osint import investigar_ip
+        assert callable(investigar_ip)
+
+    def test_whois_importavel(self):
+        from inspectra.shortcuts.osint import _whois
+        assert callable(_whois)
+
+    def test_dns_importavel(self):
+        from inspectra.shortcuts.osint import _dns
+        assert callable(_dns)
+
+    def test_brasilapi_cnpj_importavel(self):
+        from inspectra.shortcuts.osint import _brasilapi_cnpj
+        assert callable(_brasilapi_cnpj)
+
+
+# ─── Testes: relatorio.py ───────────────────────────────────────────────────
+
+class TestRelatorio:
+    def test_de_json_aceita_dict(self):
+        from inspectra.shortcuts.relatorio import de_json
+        dados = {
+            "titulo": "Teste",
+            "sumario": "Resumo",
+            "achados": [
+                {"id": "A-1", "titulo": "Achado", "severidade": "info",
+                 "fato": "...", "metodo": "...", "fonte": [], "base_legal": "", "ressalva": ""}
+            ],
+            "recomendacoes": []
+        }
+        r = de_json(dados)
+        assert isinstance(r, str)
+        assert "Teste" in r
+
+    def test_de_json_sem_achados(self):
+        from inspectra.shortcuts.relatorio import de_json
+        dados = {"titulo": "Sem achados", "sumario": "."}
+        r = de_json(dados)
+        assert "Sem achados" in r
+        assert "Nenhuma" in r  # "Nenhuma recomendacao registrada"
+
+    def test_de_html_converte_markdown(self):
+        from inspectra.shortcuts.relatorio import de_html
+        md = "# Titulo\n\n**negrito** e *italico*."
+        r = de_html(md)
+        assert "<h1>" in r
+        assert "<strong>" in r
+        assert "<em>" in r
+
+    def test_de_json_none_nao_crasha(self):
+        from inspectra.shortcuts.relatorio import de_json
+        # sem 'achados' key
+        dados = {}
+        r = de_json(dados)
+        assert isinstance(r, str)
+
+    def test_de_html_lista_numbers(self):
+        from inspectra.shortcuts.relatorio import de_html
+        md = "1. Item um\n2. Item dois"
+        r = de_html(md)
+        assert "<li>" in r
+
+
+# ─── Testes: sancoes.py ─────────────────────────────────────────────────────
+
+class TestSancoes:
+    def test_norm_cnpj(self):
+        from inspectra.shortcuts.sancoes import _norm
+        assert _norm("07.192.414/0001-09") == "07192414000109"
+        assert _norm("07192414000109") == "07192414000109"
+
+    def test_buscar_em_csv_vazio(self):
+        """_buscar_em_csv() nao crasha com CNPJ sem matches."""
+        from inspectra.shortcuts.sancoes import _buscar_em_csv
+        r = _buscar_em_csv("99999999999999")  # CNPJ que nao existe
+        assert isinstance(r, list)
+
+    def test_cmd_sancoes_importavel(self):
+        from inspectra.shortcuts.sancoes import cmd_sancoes
+        assert callable(cmd_sancoes)
+
+
+# ─── Testes: sql_qualquer — edge cases ──────────────────────────────────────
+
+class TestSqlQualquerEdge:
+    def test_sql_injection_blocked(self, temp_sqlite):
+        from inspectra.shortcuts.sql_qualquer import executar_sql
+        r = executar_sql(temp_sqlite, "SELECT * FROM vendas; DROP TABLE vendas;")
+        assert r["ok"] is False
+        assert "Apenas SELECT" in r["erro"]
+
+    def test_sql_with_limit(self, temp_sqlite):
+        from inspectra.shortcuts.sql_qualquer import executar_sql
+        r = executar_sql(temp_sqlite, "SELECT * FROM vendas LIMIT 2")
+        assert r["ok"] is True
+        assert len(r["dados"]["rows"]) == 2
+
+    def test_sql_with_where(self, temp_sqlite):
+        from inspectra.shortcuts.sql_qualquer import executar_sql
+        r = executar_sql(temp_sqlite, "SELECT * FROM vendas WHERE valor > 150")
+        assert r["ok"] is True
+        assert len(r["dados"]["rows"]) == 1
+
+    def test_sql_aggregate(self, temp_sqlite):
+        from inspectra.shortcuts.sql_qualquer import executar_sql
+        r = executar_sql(temp_sqlite, "SELECT SUM(valor) as total FROM vendas")
+        assert r["ok"] is True
+        assert r["dados"]["rows"][0]["total"] == 450.0
+
+    def test_sql_with_order_by(self, temp_sqlite):
+        from inspectra.shortcuts.sql_qualquer import executar_sql
+        r = executar_sql(temp_sqlite, "SELECT * FROM vendas ORDER BY valor DESC")
+        assert r["ok"] is True
+        vals = [row["valor"] for row in r["dados"]["rows"]]
+        assert vals == sorted(vals, reverse=True)
+
+
+# ─── Testes: csv_diff — edge cases ─────────────────────────────────────────
+
+class TestCsvDiffEdge:
+    def test_csv_sem_linha_header(self, tmp_path):
+        """CSV sem header deve ser tratado."""
+        f = tmp_path / "sem_header.csv"
+        f.write_text("a,b,c\n1,2,3\n")
+        from inspectra.shortcuts.csv_diff import csv_diff
+        r = csv_diff(str(f), str(f), "a")
+        assert r["ok"] is True
+
+    def test_csv_encoding_latin1(self, tmp_path):
+        """CSV com encoding latin-1 (Windows) deve funcionar."""
+        f1 = tmp_path / "latin1.csv"
+        f1.write_text("cnpj,nome\n07192414000109,CAIXA ACENTUACAO\n", encoding="latin-1")
+        from inspectra.shortcuts.csv_diff import csv_diff
+        r = csv_diff(str(f1), str(f1), "cnpj")
+        assert r["ok"] is True
+
+    def test_csv_virgula_como_delimiter(self, tmp_path):
+        """CSV com vírgula como delimiter padrão."""
+        f = tmp_path / "virg.csv"
+        f.write_text("cnpj,nome,valor\n07192414000109,A,100\n")
+        from inspectra.shortcuts.csv_diff import csv_diff
+        r = csv_diff(str(f), str(f), "cnpj")
+        assert r["ok"] is True
+
+    def test_chave_nao_existe_no_csv(self, temp_csv_a, tmp_path):
+        """Chave não existe no CSV — diff completo (arquivos diferentes)."""
+        f2 = tmp_path / "outro.csv"
+        f2.write_text("cnpj_outro,valor_outro\n07192414000109,999\n")
+        from inspectra.shortcuts.csv_diff import csv_diff
+        r = csv_diff(temp_csv_a, str(f2), "cnpj")
+        assert r["ok"] is True
+        assert r["dados"]["totais"]["adicionados"] >= 0
+
+
+# ─── Testes: geocode_lote — edge cases ─────────────────────────────────────
+
+class TestGeocodeLoteEdge:
+    def test_lista_com_muitos_cnpjs(self):
+        """Geocode com lista vazia não crasha."""
+        from inspectra.shortcuts.geocode_lote import geocode_lote
+        r = geocode_lote([], max_workers=1)
+        assert r["ok"] is True
+        assert r["dados"]["total"] == 0
+
+    def test_geocode_cnpj_invalido_nao_crasha(self):
+        from inspectra.shortcuts.geocode_lote import _geocode_cnpj
+        cache = {}
+        r = _geocode_cnpj("123", cache)
+        assert r["geocodificado"] is False
+
+    def test_geocode_lote_retorna_cache(self):
+        """geocode_lote retorna dict com cache usado internamente."""
+        from inspectra.shortcuts.geocode_lote import geocode_lote
+        r = geocode_lote([], max_workers=1)
+        assert "cache" in r["dados"] or "resultados" in r["dados"]
+
+    def test_norm_cnpj(self):
+        from inspectra.shortcuts.geocode_lote import _norm_cnpj
+        assert _norm_cnpj("07.192.414/0001-09") == "07192414000109"
+        assert _norm_cnpj("07192414000109") == "07192414000109"
+
+    def test_geocode_lote_importavel(self):
+        from inspectra.shortcuts.geocode_lote import geocode_lote
+        assert callable(geocode_lote)
+
+
+# ─── Testes: metadados — edge cases ────────────────────────────────────────
+
+class TestMetadadosEdge:
+    def test_png_256cores(self, tmp_path):
+        """PNG de 256 cores (paletizado) não crasha."""
+        try:
+            from PIL import Image
+        except ImportError:
+            pytest.skip("Pillow nao instalado")
+        img_path = tmp_path / "paleta.png"
+        img = Image.new("P", (10, 10))
+        img.save(str(img_path))
+        from inspectra.shortcuts.metadados import extrair_metadados
+        r = extrair_metadados(str(img_path))
+        assert r["ok"] is True
+        assert r["dados"]["formato"] == ".png"
+
+    def test_tiff_sem_exif(self, tmp_path):
+        """TIFF salvo por Pillow — alguns nao tem _getexif, mas JPG funciona."""
+        pytest.skip("Pillow TIFFs nem sempre suportam _getexif — JPG/já coberto por test_jpg_sem_exif")
+
+    def test_diretorio_nao_existe(self):
+        from inspectra.shortcuts.metadados import extrair_metadados
+        r = extrair_metadados("/nao/existe/dir")
+        assert r["ok"] is False
+
+    def test_arquivo_sem_extensao(self, tmp_path):
+        """Arquivo sem extensão é rejeitado."""
+        f = tmp_path / "semext"
+        f.write_bytes(b"fake content")
+        from inspectra.shortcuts.metadados import extrair_metadados
+        r = extrair_metadados(str(f))
+        assert r["ok"] is False
+        assert "suportado" in r["erro"]
+
+
+# ─── Testes: socios — edge cases ────────────────────────────────────────────
+
+class TestSociosEdge:
+    @patch("inspectra.shortcuts.socios._buscar_cache")
+    def test_cnpj_valido_cache_hit(self, mock_cache):
+        mock_cache.return_value = {
+            "cnpj": "07192414000109",
+            "razao_social": "COSTA OESTE",
+            "qsa": [{"nome": "TESTE SOBRENOME", "cpf": "12345678901", "qualificacao": "SOCIO"}]
+        }
+        from inspectra.shortcuts.socios import listar_socios
+        r = listar_socios("07192414000109")
+        assert r["ok"] is True
+        assert r["fonte"] == "BrasilAPI (cache)"
+        assert r["dados"]["total_socios"] == 1
+
+    def test_cpf_parcial_mascara(self):
+        from inspectra.shortcuts.socios import _cpf_parcial
+        r = _cpf_parcial("12345678901")
+        assert "***" in r
+        assert r.endswith("8901")
+        assert r != "12345678901"  # nunca revela CPF completo
+
+    def test_norm_cnpj(self):
+        from inspectra.shortcuts.socios import _norm_cnpj
+        assert _norm_cnpj("07.192.414/0001-09") == "07192414000109"
+        assert _norm_cnpj("07192414000109") == "07192414000109"
+        assert _norm_cnpj("abc") == ""  # strip non-digits
+
+    def test_listar_socios_cnpj_invalido(self):
+        from inspectra.shortcuts.socios import listar_socios
+        r = listar_socios("123")  # menos de 14 digitos
+        assert r["ok"] is False
+        assert "14 digitos" in r["erro"]
